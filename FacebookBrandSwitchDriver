@@ -1,0 +1,57 @@
+package com.hadoop.brandswitch;
+
+
+import org.apache.hadoop.mapreduce.*;
+import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
+import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.util.*;
+
+import org.apache.hadoop.conf.*;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.Text;
+
+
+
+
+public class FacebookBrandSwitchDriver extends Configured implements Tool{
+
+	public static void main(String args[]) throws Exception
+	{
+		ToolRunner.run(new FacebookBrandSwitchDriver(), args);
+	}
+	
+	
+	public int run(String[] args) throws Exception
+	{
+		Job job=new Job(getConf(),"FB Job");
+		job.setJarByClass(FacebookBrandSwitchDriver.class);
+		job.setMapperClass(FacebookBrandSwitchMapper.class);
+		job.setPartitionerClass(FacebookBrandSwitchPartitioner.class);
+		job.setReducerClass(FacebookBrandSwitchReducer.class);
+		job.setInputFormatClass(TextInputFormat.class);
+		job.setMapOutputKeyClass(FBUser.class);
+		job.setMapOutputValueClass(Text.class);
+		job.setSortComparatorClass(FacebookBrandSwitchSortComparator.class);
+		job.setGroupingComparatorClass(FacebookBrandSwitchGroupingComparator.class);
+		job.setNumReduceTasks(2);
+		FileInputFormat.addInputPath(job, new Path(args[0]));
+		FileOutputFormat.setOutputPath(job, new Path(args[1]));
+		
+		job.waitForCompletion(true);
+		Job job2=new Job(getConf(),"FB Count Job");
+		job2.setJarByClass(FacebookBrandSwitchDriver.class);
+		job2.setMapperClass(FacebookBrandSwitchCountMapper.class);
+		job2.setReducerClass(FacebookBrandSwitchCountReducer.class);
+		job2.setInputFormatClass(TextInputFormat.class);
+		job2.setMapOutputKeyClass(Text.class);
+		job2.setMapOutputValueClass(IntWritable.class);
+		job2.setOutputKeyClass(Text.class);
+		job2.setOutputValueClass(IntWritable.class);
+		FileInputFormat.addInputPath(job2, new Path(args[1]+"//part-r-0000*"));
+		FileOutputFormat.setOutputPath(job2, new Path(args[1]+"//finalout"));
+		job2.waitForCompletion(true);
+		return 0;
+	}
+}
